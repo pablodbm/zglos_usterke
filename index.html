@@ -1,0 +1,197 @@
+<!DOCTYPE html>
+<html lang="pl">
+<head>
+    <meta charset="utf-8">
+    <title>Zgłoś Usterkę</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <link rel="manifest" href="manifest.json">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+    
+    <script src="https://unpkg.com/react@18/umd/react.development.js"></script>
+    <script src="https://unpkg.com/react-dom@18/umd/react-dom.development.js"></script>
+    <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+
+    <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-auth-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-firestore-compat.js"></script>
+
+    <style>
+        body { font-family: 'Segoe UI', sans-serif; margin: 0; background-color: #f0f2f5; }
+        .app-container { max-width: 500px; margin: 0 auto; min-height: 100vh; display: flex; flex-direction: column; background: white; position: relative; }
+        .blue-header { background: #3b82f6; color: white; padding: 15px; display: flex; align-items: center; justify-content: space-between; z-index: 1001; }
+        .btn-blue { background: #3b82f6; color: white; border: none; padding: 12px; border-radius: 8px; width: 100%; font-weight: bold; cursor: pointer; margin-top: 10px; }
+        .card { border: 1px solid #eee; border-radius: 12px; padding: 20px; margin: 15px; box-shadow: 0 2px 4px rgba(0,0,0,0.05); }
+        #map-container { flex-grow: 1; width: 100%; min-height: 500px; z-index: 1; }
+        .fab { position: absolute; bottom: 30px; right: 20px; background: #3b82f6; color: white; width: 60px; height: 60px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 24px; box-shadow: 0 4px 10px rgba(0,0,0,0.3); cursor: pointer; z-index: 1000; }
+        .gps-box { background: #f9fafb; padding: 10px; border-radius: 6px; font-family: monospace; font-size: 12px; border: 1px solid #ddd; }
+        input, textarea, select { width: 100%; padding: 12px; margin-bottom: 10px; box-sizing: border-box; border: 1px solid #ccc; border-radius: 8px; font-size: 16px; }
+        .battery-info { font-size: 12px; opacity: 0.9; }
+    </style>
+</head>
+<body>
+    <div id="root"></div>
+
+    <script type="text/babel">
+         const firebaseConfig = {
+            apiKey: "AIzaSyCD-ONpxbMC7l1lH86Ys4W7X4jVRG01JSA",
+            authDomain: "zglos-usterke-de01b.firebaseapp.com",
+            projectId: "zglos-usterke-de01b",
+            storageBucket: "zglos-usterke-de01b.firebasestorage.app",
+            messagingSenderId: "761220294881",
+            appId: "1:761220294881:web:8a6e26de320a206c93afa0",
+            measurementId: "G-8LQS6XWLMR"
+        };
+
+        if (!firebase.apps.length) firebase.initializeApp(firebaseConfig);
+        const auth = firebase.auth();
+        const db = firebase.firestore();
+
+        const { useState, useEffect, useRef } = React;
+
+        function MapView({ user, onAddClick, battery }) {
+            const mapRef = useRef(null);
+
+            useEffect(() => {
+                if (!mapRef.current) {
+                    mapRef.current = L.map('map-container').setView([52.2297, 21.0122], 13);
+                    L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png').addTo(mapRef.current);
+                    
+                    const unsubscribe = db.collection('reports').onSnapshot(snap => {
+                        snap.docs.forEach(doc => {
+                            const { location, description, type, status } = doc.data();
+                            if (location) {
+                                L.marker([location.latitude, location.longitude])
+                                 .addTo(mapRef.current)
+                                 .bindPopup(`<b>[${type}]</b><br>${description}<br>Status: ${status}`);
+                            }
+                        });
+                    });
+
+                    if (navigator.geolocation) {
+                        navigator.geolocation.getCurrentPosition(p => {
+                            if (mapRef.current) mapRef.current.setView([p.coords.latitude, p.coords.longitude], 15);
+                        });
+                    }
+
+                    return () => {
+                        unsubscribe();
+                        if (mapRef.current) { mapRef.current.remove(); mapRef.current = null; }
+                    };
+                }
+            }, []);
+
+            return (
+                <div className="app-container">
+                    <div className="blue-header">
+                        <div>Zgłoś Usterkę<br/><small>{user?.email}</small></div>
+                        <div className="battery-info">🔋 {battery}%</div>
+                        <button onClick={() => auth.signOut()} style={{background: 'none', border: 'none', color: 'white', cursor: 'pointer'}}>Wyloguj</button>
+                    </div>
+                    <div id="map-container"></div>
+                    <div className="fab" onClick={onAddClick}><i className="fa-solid fa-plus"></i></div>
+                </div>
+            );
+        }
+
+        function App() {
+            const [user, setUser] = useState(null);
+            const [screen, setScreen] = useState('loading'); 
+            const [email, setEmail] = useState('');
+            const [password, setPassword] = useState('');
+            const [description, setDescription] = useState('');
+            const [type, setType] = useState('Dziura w drodze');
+            const [coords, setCoords] = useState({ lat: 0, lng: 0 });
+            const [battery, setBattery] = useState(100);
+
+            useEffect(() => {
+                if (navigator.getBattery) {
+                    navigator.getBattery().then(bat => {
+                        setBattery(Math.round(bat.level * 100));
+                        bat.addEventListener('levelchange', () => setBattery(Math.round(bat.level * 100)));
+                    });
+                }
+            }, []);
+
+            useEffect(() => {
+                const unsub = auth.onAuthStateChanged(u => {
+                    setUser(u);
+                    setScreen(u ? 'map' : 'login');
+                });
+                return unsub;
+            }, []);
+
+            const sendReport = async () => {
+                if (!description) return alert("Wpisz opis!");
+                try {
+                    await db.collection('reports').add({
+                        userId: user.uid,
+                        description,
+                        type,
+                        location: new firebase.firestore.GeoPoint(coords.lat, coords.lng),
+                        status: 'nowe',
+                        createdAt: firebase.firestore.FieldValue.serverTimestamp()
+                    });
+
+                    if (navigator.vibrate) navigator.vibrate(200);
+                    alert("Zgłoszono!");
+                    setScreen('map');
+                } catch (e) { alert(e.message); }
+            };
+
+            const openReport = () => {
+                if (navigator.geolocation) {
+                    navigator.geolocation.getCurrentPosition(p => {
+                        setCoords({ lat: p.coords.latitude, lng: p.coords.longitude });
+                        setScreen('report');
+                    }, () => setScreen('report'));
+                } else { setScreen('report'); }
+            };
+
+            if (screen === 'login') return (
+                <div className="app-container" style={{justifyContent: 'center', backgroundColor: '#3b82f6'}}>
+                    <div className="card" style={{backgroundColor: 'white', textAlign: 'center'}}>
+                        <h2>Logowanie</h2>
+                        <input type="email" placeholder="Email" onChange={e => setEmail(e.target.value)} />
+                        <input type="password" placeholder="Hasło" onChange={e => setPassword(e.target.value)} />
+                        <button className="btn-blue" onClick={() => auth.signInWithEmailAndPassword(email, password)}>Zaloguj się</button>
+                    </div>
+                </div>
+            );
+
+            if (screen === 'map') return <MapView user={user} onAddClick={openReport} battery={battery} />;
+
+            if (screen === 'report') return (
+                <div className="app-container">
+                    <div className="blue-header">
+                        <div onClick={() => setScreen('map')} style={{cursor: 'pointer'}}><i className="fa-solid fa-arrow-left"></i> Powrót</div>
+                        <div className="battery-info">🔋 {battery}%</div>
+                    </div>
+                    <div className="card">
+                        <h3>Nowe Zgłoszenie</h3>
+                        <label>Typ usterki</label>
+                        <select onChange={e => setType(e.target.value)}>
+                            <option>Dziura w drodze</option>
+                            <option>Zepsuta latarnia</option>
+                            <option>Przepełniony kosz</option>
+                            <option>Wandalizm</option>
+                        </select>
+                        <textarea placeholder="Opis problemu..." onChange={e => setDescription(e.target.value)}></textarea>
+                        <label><i className="fa-solid fa-location-dot"></i> Lokalizacja GPS</label>
+                        <div className="gps-box">{coords.lat.toFixed(4)}, {coords.lng.toFixed(4)}</div>
+                        <button className="btn-blue" onClick={sendReport}>Wyślij Zgłoszenie</button>
+                    </div>
+                </div>
+            );
+
+            return null;
+        }
+
+        const root = ReactDOM.createRoot(document.getElementById('root'));
+        root.render(<App />);
+
+        if ('serviceWorker' in navigator) navigator.serviceWorker.register('./sw.js');
+    </script>
+</body>
+</html>

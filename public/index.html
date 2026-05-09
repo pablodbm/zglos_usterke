@@ -18,23 +18,155 @@
     <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-firestore-compat.js"></script>
 
     <style>
-        body { font-family: 'Segoe UI', sans-serif; margin: 0; background-color: #f0f2f5; }
-        .app-container { max-width: 500px; margin: 0 auto; min-height: 100vh; display: flex; flex-direction: column; background: white; position: relative; }
-        .blue-header { background: #3b82f6; color: white; padding: 15px; display: flex; align-items: center; justify-content: space-between; z-index: 1001; }
-        .btn-blue { background: #3b82f6; color: white; border: none; padding: 12px; border-radius: 8px; width: 100%; font-weight: bold; cursor: pointer; margin-top: 10px; }
-        .card { border: 1px solid #eee; border-radius: 12px; padding: 20px; margin: 15px; box-shadow: 0 2px 4px rgba(0,0,0,0.05); }
-        #map-container { flex-grow: 1; width: 100%; min-height: 500px; z-index: 1; }
-        .fab { position: absolute; bottom: 30px; right: 20px; background: #3b82f6; color: white; width: 60px; height: 60px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 24px; box-shadow: 0 4px 10px rgba(0,0,0,0.3); cursor: pointer; z-index: 1000; }
-        .gps-box { background: #f9fafb; padding: 10px; border-radius: 6px; font-family: monospace; font-size: 12px; border: 1px solid #ddd; }
-        input, textarea, select { width: 100%; padding: 12px; margin-bottom: 10px; box-sizing: border-box; border: 1px solid #ccc; border-radius: 8px; font-size: 16px; }
-        .battery-info { font-size: 12px; opacity: 0.9; }
+        body { 
+            font-family: 'Segoe UI', sans-serif; 
+            margin: 0; 
+            background-color: #3b82f6; 
+            display: flex;
+            justify-content: center;
+            min-height: 100vh;
+        }
+
+        .app-container { 
+            width: 100%;
+            max-width: 500px;
+            min-height: 100vh; 
+            display: flex; 
+            flex-direction: column; 
+            background: white; 
+            position: relative; 
+            box-shadow: 0 0 30px rgba(0,0,0,0.2);
+        }
+
+        .blue-header { 
+            background: #2563eb; 
+            color: white; 
+            padding: 15px 20px; 
+            display: flex; 
+            align-items: center; 
+            justify-content: space-between; 
+            z-index: 1001; 
+        }
+
+        .btn-blue { 
+            background: #3b82f6; 
+            color: white; 
+            border: none; 
+            padding: 14px; 
+            border-radius: 8px; 
+            width: 100%; 
+            font-weight: bold; 
+            cursor: pointer; 
+            margin-top: 10px;
+            transition: background 0.3s;
+        }
+        .btn-blue:hover { background: #2563eb; }
+
+        .btn-google { 
+            background: white; 
+            color: #555; 
+            border: 1px solid #ddd; 
+            padding: 12px; 
+            border-radius: 8px; 
+            width: 100%; 
+            display: flex; 
+            align-items: center; 
+            justify-content: center; 
+            gap: 10px; 
+            margin-top: 10px; 
+            cursor: pointer; 
+            font-weight: bold;
+        }
+
+        .card { 
+            border: 1px solid #eee; 
+            border-radius: 12px; 
+            padding: 25px; 
+            margin: 15px; 
+            box-shadow: 0 4px 6px rgba(0,0,0,0.05); 
+            background: white;
+        }
+
+        #map-container { 
+            flex-grow: 1; 
+            width: 100%; 
+            min-height: 500px; 
+            z-index: 1; 
+        }
+
+        .fab { 
+            position: absolute; 
+            bottom: 30px; 
+            right: 25px; 
+            background: #3b82f6; 
+            color: white; 
+            width: 65px; 
+            height: 65px; 
+            border-radius: 50%; 
+            display: flex; 
+            align-items: center; 
+            justify-content: center; 
+            font-size: 28px; 
+            box-shadow: 0 6px 15px rgba(0, 0, 0, 0.3); 
+            cursor: pointer; 
+            z-index: 1000; 
+            transition: transform 0.2s;
+        }
+        .fab:hover { transform: scale(1.1); }
+
+        .gps-box { 
+            background: #f1f5f9; 
+            padding: 12px; 
+            border-radius: 8px; 
+            font-family: monospace; 
+            font-size: 14px; 
+            border: 1px solid #cbd5e1;
+            margin: 10px 0;
+        }
+
+        input, textarea, select { 
+            width: 100%; 
+            padding: 12px; 
+            margin-bottom: 15px; 
+            box-sizing: border-box; 
+            border: 1px solid #cbd5e1; 
+            border-radius: 8px; 
+            font-size: 16px; 
+        }
+
+        @media (min-width: 768px) {
+            .app-container {
+                max-width: 800px;
+                margin: 40px 0;
+                min-height: calc(100vh - 80px);
+                border-radius: 16px;
+                overflow: hidden;
+            }
+        }
+
+        .battery-info { 
+            background: rgba(255,255,255,0.2);
+            padding: 4px 10px;
+            border-radius: 20px;
+            font-size: 13px; 
+            font-weight: bold;
+        }
+
+        .link-text {
+            color: #3b82f6;
+            cursor: pointer;
+            font-size: 14px;
+            text-decoration: underline;
+            margin-top: 15px;
+            display: block;
+        }
     </style>
 </head>
 <body>
     <div id="root"></div>
 
     <script type="text/babel">
-         const firebaseConfig = {
+        const firebaseConfig = {
             apiKey: "AIzaSyCD-ONpxbMC7l1lH86Ys4W7X4jVRG01JSA",
             authDomain: "zglos-usterke-de01b.firebaseapp.com",
             projectId: "zglos-usterke-de01b",
@@ -122,6 +254,25 @@
                 return unsub;
             }, []);
 
+            const handleLogin = () => auth.signInWithEmailAndPassword(email, password).catch(e => alert(e.message));
+
+            const handleRegister = async () => {
+                try {
+                    const res = await auth.createUserWithEmailAndPassword(email, password);
+                    await db.collection('users').doc(res.user.uid).set({
+                        email: email,
+                        createdAt: firebase.firestore.FieldValue.serverTimestamp(),
+                        reportsCount: 0
+                    });
+                    alert("Konto utworzone!");
+                } catch (e) { alert(e.message); }
+            };
+
+            const loginGoogle = () => {
+                const provider = new firebase.auth.GoogleAuthProvider();
+                auth.signInWithPopup(provider).catch(e => alert(e.message));
+            };
+
             const sendReport = async () => {
                 if (!description) return alert("Wpisz opis!");
                 try {
@@ -149,13 +300,30 @@
                 } else { setScreen('report'); }
             };
 
-            if (screen === 'login') return (
+            if (screen === 'loading') return null;
+
+            if (screen === 'login' || screen === 'register') return (
                 <div className="app-container" style={{justifyContent: 'center', backgroundColor: '#3b82f6'}}>
-                    <div className="card" style={{backgroundColor: 'white', textAlign: 'center'}}>
-                        <h2>Logowanie</h2>
+                    <div className="card" style={{textAlign: 'center'}}>
+                        <h2>{screen === 'login' ? 'Logowanie' : 'Rejestracja'}</h2>
                         <input type="email" placeholder="Email" onChange={e => setEmail(e.target.value)} />
                         <input type="password" placeholder="Hasło" onChange={e => setPassword(e.target.value)} />
-                        <button className="btn-blue" onClick={() => auth.signInWithEmailAndPassword(email, password)}>Zaloguj się</button>
+                        
+                        {screen === 'login' ? (
+                            <React.Fragment>
+                                <button className="btn-blue" onClick={handleLogin}>Zaloguj się</button>
+                                <div style={{margin: '15px 0', color: '#999', fontSize: '14px'}}>lub</div>
+                                <button className="btn-google" onClick={loginGoogle}>
+                                    <img src="https://www.google.com/favicon.ico" width="16" alt="Google" /> Zaloguj przez Google
+                                </button>
+                                <span className="link-text" onClick={() => setScreen('register')}>Nie masz konta? Zarejestruj się</span>
+                            </React.Fragment>
+                        ) : (
+                            <React.Fragment>
+                                <button className="btn-blue" onClick={handleRegister}>Załóż konto</button>
+                                <span className="link-text" onClick={() => setScreen('login')}>Masz już konto? Zaloguj się</span>
+                            </React.Fragment>
+                        )}
                     </div>
                 </div>
             );
@@ -191,7 +359,11 @@
         const root = ReactDOM.createRoot(document.getElementById('root'));
         root.render(<App />);
 
-        if ('serviceWorker' in navigator) navigator.serviceWorker.register('./sw.js');
+        if ('serviceWorker' in navigator) {
+            window.addEventListener('load', () => {
+                navigator.serviceWorker.register('./sw.js');
+            });
+        }
     </script>
 </body>
 </html>
